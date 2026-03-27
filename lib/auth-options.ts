@@ -59,8 +59,8 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   pages: {
-    signIn: '/login',
-    error: '/error',
+    signIn: `${env.PUBLIC_APP_URL}/login`,
+    error: `${env.PUBLIC_APP_URL}/error`,
   },
   callbacks: {
     async jwt({ token, user }: { token: JWT; user: any }) {
@@ -82,7 +82,7 @@ export const authOptions: NextAuthOptions = {
 
       return refreshAccessToken(token);
     },
-    async session({ session, token }: { session: Session | any; token: any }) {
+    async session({ session, token }: { session: Session; token: any }) {
       session.user.id = token.id;
       session.user.username = token.username;
       session.user.email = token.email;

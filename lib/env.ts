@@ -9,6 +9,8 @@ export const env = createEnv({
   server: {
     API_URL: z.string().min(1),
     NEXTAUTH_SECRET: z.string().min(1),
+    NEXTAUTH_URL: z.string().min(1),
+    PUBLIC_APP_URL: z.string().min(1),
   },
   /*
    * Environment variables available on the client (and server).
@@ -29,9 +31,11 @@ export const env = createEnv({
     runtimeEnv: {
       API_URL: process.env.API_URL,
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  },
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+      PUBLIC_APP_URL: process.env.PUBLIC_APP_URL,
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    },
   // experimental__runtimeEnv: {
   //   NEXT_PUBLIC_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_PUBLISHABLE_KEY,
   // }
