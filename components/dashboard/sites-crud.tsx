@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
   AlertDialog,
@@ -31,6 +31,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
   Table,
   TableBody,
   TableCaption,
@@ -46,6 +54,9 @@ export type Site = {
   site_id?: string;
   base_url?: string;
   user_id?: string | number;
+  enable_ip_filter?: boolean;
+  ip_filter_mode?: string;
+  ip_filters?: string[];
   created_at?: string;
   updated_at?: string;
 };
@@ -88,8 +99,15 @@ function sortSites(nextSites: Site[]) {
 
 export function SitesCrud({ initialSites, accessToken, initialError = null }: SitesCrudProps) {
   const [sites, setSites] = useState(() => sortSites(initialSites));
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
+  const [enableIpFilter, setEnableIpFilter] = useState(false);
+  const [ipFilterMode, setIpFilterMode] = useState("whitelist");
+  const [ipFiltersInput, setIpFiltersInput] = useState("");
   const [editBaseUrl, setEditBaseUrl] = useState("");
+  const [editEnableIpFilter, setEditEnableIpFilter] = useState(false);
+  const [editIpFilterMode, setEditIpFilterMode] = useState("whitelist");
+  const [editIpFiltersInput, setEditIpFiltersInput] = useState("");
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [sitePendingDelete, setSitePendingDelete] = useState<Site | null>(null);
   const [error, setError] = useState<string | null>(initialError);
@@ -98,7 +116,70 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [search, setSearch] = useState("");
+  const [ipFilterState, setIpFilterState] = useState("all");
+  const [sortBy, setSortBy] = useState("id");
+  const [sortDir, setSortDir] = useState("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const hasAccessToken = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+
+  const filteredAndSortedSites = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    const filtered = sites.filter((site) => {
+      if (ipFilterState === "enabled" && !site.enable_ip_filter) {
+        return false;
+      }
+      if (ipFilterState === "disabled" && site.enable_ip_filter) {
+        return false;
+      }
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const haystack = `${site.site_id ?? ""} ${site.base_url ?? ""}`.toLowerCase();
+      return haystack.includes(normalizedSearch);
+    });
+
+    const sorted = [...filtered].sort((left, right) => {
+      const leftValue =
+        sortBy === "site_id"
+          ? left.site_id ?? ""
+          : sortBy === "base_url"
+            ? left.base_url ?? ""
+            : left.id;
+
+      const rightValue =
+        sortBy === "site_id"
+          ? right.site_id ?? ""
+          : sortBy === "base_url"
+            ? right.base_url ?? ""
+            : right.id;
+
+      if (typeof leftValue === "number" && typeof rightValue === "number") {
+        return sortDir === "asc" ? leftValue - rightValue : rightValue - leftValue;
+      }
+
+      const comparison = String(leftValue).localeCompare(String(rightValue));
+      return sortDir === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [sites, search, ipFilterState, sortBy, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedSites.length / pageSize));
+  const pagedSites = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredAndSortedSites.slice(start, start + pageSize);
+  }, [filteredAndSortedSites, page, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   async function request<T>(path: string, init: RequestInit) {
     const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
@@ -137,13 +218,27 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
     setFormError(null);
 
     try {
+      const ipFilters = ipFiltersInput
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const response = await request<SiteResponse>("/sites", {
         method: "POST",
-        body: JSON.stringify({ base_url: baseUrl.trim() }),
+        body: JSON.stringify({
+          base_url: baseUrl.trim(),
+          enable_ip_filter: enableIpFilter,
+          ip_filter_mode: ipFilterMode,
+          ip_filters: ipFilters,
+        }),
       });
 
       setSites((current) => sortSites([...current, response.site]));
       setBaseUrl("");
+      setEnableIpFilter(false);
+      setIpFilterMode("whitelist");
+      setIpFiltersInput("");
+      setIsCreateDialogOpen(false);
     } catch (submitError) {
       setFormError(
         submitError instanceof Error ? submitError.message : "Unable to create site.",
@@ -153,16 +248,22 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
     }
   }
 
-  function openEditDialog(site: Site) {
-    setEditingSite(site);
-    setEditBaseUrl(site.base_url ?? "");
+  function openFormDialog(site?: Site) {
+    setEditingSite(site ?? null);
+    setEditBaseUrl(site?.base_url ?? "");
+    setEditEnableIpFilter(site?.enable_ip_filter ?? false);
+    setEditIpFilterMode(site?.ip_filter_mode ?? "whitelist");
+    setEditIpFiltersInput(site?.ip_filters?.join(", ") ?? "");
     setError(null);
     setFormError(null);
   }
 
-  function closeEditDialog() {
+  function closeFormDialog() {
     setEditingSite(null);
     setEditBaseUrl("");
+    setEditEnableIpFilter(false);
+    setEditIpFilterMode("whitelist");
+    setEditIpFiltersInput("");
     setFormError(null);
   }
 
@@ -184,9 +285,19 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
     setFormError(null);
 
     try {
+      const editIpFilters = editIpFiltersInput
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const response = await request<SiteResponse>(`/sites/${editingSite.site_id}`, {
         method: "PUT",
-        body: JSON.stringify({ base_url: editBaseUrl.trim() }),
+        body: JSON.stringify({
+          base_url: editBaseUrl.trim(),
+          enable_ip_filter: editEnableIpFilter,
+          ip_filter_mode: editIpFilterMode,
+          ip_filters: editIpFilters,
+        }),
       });
 
       setSites((current) =>
@@ -194,7 +305,7 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
           current.map((site) => (site.id === response.site.id ? response.site : site)),
         ),
       );
-      closeEditDialog();
+      closeFormDialog();
     } catch (submitError) {
       setFormError(
         submitError instanceof Error ? submitError.message : "Unable to update site.",
@@ -222,7 +333,7 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
       );
 
       if (editingSite?.site_id === sitePendingDelete.site_id) {
-        closeEditDialog();
+        closeFormDialog();
       }
 
       setSitePendingDelete(null);
@@ -244,38 +355,118 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add site</CardTitle>
-          <CardDescription>
-            Enter the site base URL. The backend will generate the site ID for you.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          disabled={!hasAccessToken}
+          onClick={() => {
+            setFormError(null);
+            setIsCreateDialogOpen(true);
+          }}
+        >
+          Add site
+        </Button>
+      </div>
+
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <Dialog
+        open={isCreateDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isCreating) {
+            setIsCreateDialogOpen(false);
+            setBaseUrl("");
+            setEnableIpFilter(false);
+            setIpFilterMode("whitelist");
+            setIpFiltersInput("");
+            setFormError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add site</DialogTitle>
+            <DialogDescription>
+              Enter the site base URL. The backend will generate the site ID for you.
+            </DialogDescription>
+          </DialogHeader>
+
           <form className="space-y-4" onSubmit={handleCreateSite}>
-            <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-              <div className="space-y-2">
-                <Label htmlFor="base-url">Base URL</Label>
-                <Input
-                  id="base-url"
-                  type="url"
-                  value={baseUrl}
-                  onChange={(event) => setBaseUrl(event.target.value)}
-                  placeholder="https://example.frappe.cloud"
-                  disabled={!hasAccessToken || isCreating}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={!hasAccessToken || isCreating}>
-                {isCreating ? "Creating..." : "Create site"}
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="base-url">Base URL</Label>
+              <Input
+                id="base-url"
+                type="url"
+                value={baseUrl}
+                onChange={(event) => setBaseUrl(event.target.value)}
+                placeholder="https://example.frappe.cloud"
+                disabled={isCreating}
+                required
+              />
             </div>
 
+            <div className="flex items-center gap-3">
+              <Switch
+                id="enable-ip-filter"
+                checked={enableIpFilter}
+                onCheckedChange={setEnableIpFilter}
+                disabled={isCreating}
+              />
+              <Label htmlFor="enable-ip-filter">Enable IP filter</Label>
+            </div>
+
+            {enableIpFilter && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="ip-filter-mode">Filter mode</Label>
+                  <Select value={ipFilterMode} onValueChange={setIpFilterMode} disabled={isCreating}>
+                    <SelectTrigger id="ip-filter-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="whitelist">Whitelist</SelectItem>
+                      <SelectItem value="blacklist">Blacklist</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ip-filters">IP patterns (comma-separated)</Label>
+                  <Input
+                    id="ip-filters"
+                    value={ipFiltersInput}
+                    onChange={(event) => setIpFiltersInput(event.target.value)}
+                    placeholder="192.168.*.*, 10.0.*.*"
+                    disabled={isCreating}
+                  />
+                </div>
+              </div>
+            )}
+
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isCreating}
+                onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  setBaseUrl("");
+                  setEnableIpFilter(false);
+                  setIpFilterMode("whitelist");
+                  setIpFiltersInput("");
+                  setFormError(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? "Creating..." : "Create site"}
+              </Button>
+            </DialogFooter>
           </form>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -285,10 +476,69 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 grid gap-3 md:grid-cols-5">
+            <Input
+              placeholder="Search site ID or base URL"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              className="md:col-span-2"
+            />
+            <Select
+              value={ipFilterState}
+              onValueChange={(value) => {
+                setIpFilterState(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="IP filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="enabled">IP filter enabled</SelectItem>
+                <SelectItem value="disabled">IP filter disabled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={sortBy}
+              onValueChange={(value) => {
+                setSortBy(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="id">ID</SelectItem>
+                <SelectItem value="site_id">Site ID</SelectItem>
+                <SelectItem value="base_url">Base URL</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={sortDir}
+              onValueChange={(value) => {
+                setSortDir(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Asc</SelectItem>
+                <SelectItem value="desc">Desc</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Table>
             <TableCaption>
-              {sites.length
-                ? `${sites.length} site${sites.length === 1 ? "" : "s"} connected.`
+              {filteredAndSortedSites.length
+                ? `${filteredAndSortedSites.length} site${filteredAndSortedSites.length === 1 ? "" : "s"} matched.`
                 : "No sites yet. Create your first site above."}
             </TableCaption>
             <TableHeader>
@@ -300,8 +550,8 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sites.length ? (
-                sites.map((site) => (
+              {pagedSites.length ? (
+                pagedSites.map((site) => (
                   <TableRow key={site.id}>
                     <TableCell>{site.id}</TableCell>
                     <TableCell>{site.site_id ?? "N/A"}</TableCell>
@@ -311,7 +561,7 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => openEditDialog(site)}
+                          onClick={() => openFormDialog(site)}
                         >
                           Edit
                         </Button>
@@ -335,10 +585,50 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               )}
             </TableBody>
           </Table>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[110px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 / page</SelectItem>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Dialog open={Boolean(editingSite)} onOpenChange={(open) => !open && closeEditDialog()}>
+      <Dialog open={Boolean(editingSite)} onOpenChange={(open) => !open && closeFormDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit site</DialogTitle>
@@ -366,10 +656,47 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               />
             </div>
 
+            <div className="flex items-center gap-3">
+              <Switch
+                id="edit-enable-ip-filter"
+                checked={editEnableIpFilter}
+                onCheckedChange={setEditEnableIpFilter}
+                disabled={isUpdating}
+              />
+              <Label htmlFor="edit-enable-ip-filter">Enable IP filter</Label>
+            </div>
+
+            {editEnableIpFilter && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-ip-filter-mode">Filter mode</Label>
+                  <Select value={editIpFilterMode} onValueChange={setEditIpFilterMode} disabled={isUpdating}>
+                    <SelectTrigger id="edit-ip-filter-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="whitelist">Whitelist</SelectItem>
+                      <SelectItem value="blacklist">Blacklist</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-ip-filters">IP patterns (comma-separated)</Label>
+                  <Input
+                    id="edit-ip-filters"
+                    value={editIpFiltersInput}
+                    onChange={(event) => setEditIpFiltersInput(event.target.value)}
+                    placeholder="192.168.*.*, 10.0.*.*"
+                    disabled={isUpdating}
+                  />
+                </div>
+              </div>
+            )}
+
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeEditDialog}>
+              <Button type="button" variant="outline" onClick={closeFormDialog}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isUpdating}>

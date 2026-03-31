@@ -48,7 +48,7 @@ export default function ProtectedAppShell({
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
         <Header
@@ -56,9 +56,17 @@ export default function ProtectedAppShell({
           isFullWidth={isFullWidth}
           onToggleFullWidth={handleToggleFullWidth}
         />
-        <main className="flex-1">
-          <div className={isFullWidth ? "w-full px-4 py-4 md:px-6" : "mx-auto w-full max-w-7xl px-4 py-4 md:px-6"}>
+        <main className="flex-1 bg-muted/20">
+          <div
+            className={
+              isFullWidth
+                ? "w-full px-4 py-5 md:px-6 md:py-6"
+                : "mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6"
+            }
+          >
+            <div className="rounded-lg border bg-background/95 p-3 shadow-sm md:p-4">
             {children}
+            </div>
           </div>
         </main>
         <Footer isFullWidth={isFullWidth} />

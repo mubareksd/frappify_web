@@ -21,6 +21,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useMemo, useState } from "react";
 import { env } from "@/lib/env";
@@ -42,6 +43,7 @@ export default function Header({
     isFullWidth,
     onToggleFullWidth,
 }: HeaderProps) {
+    const pathname = usePathname();
     const { resolvedTheme, setTheme } = useTheme();
     const [isSessionDefaultsOpen, setIsSessionDefaultsOpen] = useState(false);
 
@@ -67,6 +69,12 @@ export default function Header({
         await signOut({ callbackUrl: `${env.NEXT_PUBLIC_APP_URL}/login` });
     };
 
+    const sectionTitle = useMemo(() => {
+        if (pathname.startsWith("/dashboard/sites")) return "Sites";
+        if (pathname.startsWith("/dashboard/logs")) return "Logs";
+        return "Dashboard";
+    }, [pathname]);
+
     return (
         <>
             <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
@@ -74,7 +82,7 @@ export default function Header({
                     <div className="flex min-w-0 items-center gap-2">
                         <SidebarTrigger />
                         <div className="min-w-0">
-                            <p className="truncate text-xs font-medium text-foreground">Frappify</p>
+                            <p className="truncate text-xs font-medium text-foreground">{sectionTitle}</p>
                             {user?.siteId ? (
                                 <p className="hidden truncate text-xs text-muted-foreground sm:block">
                                     Site: {user.siteId}
