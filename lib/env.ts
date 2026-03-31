@@ -18,6 +18,7 @@ export const env = createEnv({
    * 💡 You'll get type errors if these are not prefixed with NEXT_PUBLIC_.
    */
   client: {
+    NEXT_PUBLIC_APP_NAME: z.string().min(1),
     NEXT_PUBLIC_API_URL: z.string().min(1),
     NEXT_PUBLIC_APP_URL: z.string().min(1),
   },
@@ -33,6 +34,7 @@ export const env = createEnv({
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
       NEXTAUTH_URL: process.env.NEXTAUTH_URL,
       PUBLIC_APP_URL: process.env.PUBLIC_APP_URL,
+      NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
       NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     },
