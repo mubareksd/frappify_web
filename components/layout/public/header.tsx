@@ -17,7 +17,7 @@ export async function Header() {
           </span>
         </Link>
         <nav className="flex items-center space-x-4">
-          <Button asChild variant="primary" size="sm">
+          <Button asChild variant="default" size="sm">
             <Link
               href="https://play.google.com/store/apps/details?id=et.kinet.frappify"
               target="_blank"
