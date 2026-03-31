@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
             For privacy concerns or questions, please contact us at{" "}
             <Link
               href="mailto:info@kinet.et"
-              className="text-blue-400 hover:underline"
+              className="text-primary hover:underline"
             >
               info@kinet.et
             </Link>

@@ -3,8 +3,8 @@ import { env } from "@/lib/env";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/50">
-      <div className="container flex flex-col gap-4 py-10 px-4 md:px-6 md:flex-row md:justify-between">
+    <footer className="w-full border-t bg-muted/50">
+      <div className="container max-w-screen-xl mx-auto flex flex-col gap-4 py-10 px-4 md:px-6 md:flex-row md:justify-between">
         <div className="flex flex-col gap-4 md:gap-6">
           <Link className="flex items-center" href="/">
             <span className="ml-2 text-lg font-semibold text-foreground">
@@ -29,7 +29,7 @@ export function Footer() {
             Privacy Policy
           </Link>
           <Link
-            className="text-sm text-muted-foreground hover:underline underline-offset-4"
+            className="text-sm text-primary hover:underline underline-offset-4"
             href="mailto:info@kinet.et"
           >
             Contact Us

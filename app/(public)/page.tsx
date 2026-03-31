@@ -22,7 +22,7 @@ export default function Home() {
               <Button
                 asChild
                 size="lg"
-                className="bg-blue-400 hover:bg-blue-500"
+                className="bg-primary hover:bg-primary/90"
               >
                 <Link href="#download">Download Now</Link>
               </Button>
@@ -74,7 +74,7 @@ export default function Home() {
             </div>
             <div className="w-full max-w-sm space-y-2">
               <Button
-                className="w-full bg-blue-400 hover:bg-blue-500"
+                className="w-full bg-primary hover:bg-primary/90"
                 asChild
                 size="lg"
               >
@@ -105,8 +105,8 @@ function FeatureCard({
 }) {
   return (
     <div className="flex flex-col items-center space-y-2 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-sm">
-      <div className="p-2 bg-blue-400 bg-opacity-10 rounded-full">
-        <Icon className="h-6 w-6 text-blue-400" />
+      <div className="p-2 bg-primary/10 rounded-full">
+        <Icon className="h-6 w-6 text-primary" />
       </div>
       <h3 className="text-xl font-bold text-center">{title}</h3>
       <p className="text-center text-gray-500 dark:text-gray-400">
