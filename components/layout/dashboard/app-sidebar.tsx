@@ -52,7 +52,7 @@ export default function AppSidebar() {
                   asChild
                   isActive={isActivePath("/dashboard")}
                 >
-                  <Link href={hrefFor("dashboard")}>
+                  <Link href="/dashboard">
                     <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
