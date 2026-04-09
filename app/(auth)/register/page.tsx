@@ -90,7 +90,7 @@ export default function RegisterPage() {
                 type="text"
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
-                placeholder="Mubarek"
+                placeholder="John"
                 autoComplete="given-name"
                 required
               />
@@ -115,7 +115,7 @@ export default function RegisterPage() {
                 type="text"
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
-                placeholder="Salah"
+                placeholder="Doe"
                 autoComplete="family-name"
                 required
               />

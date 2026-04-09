@@ -132,9 +132,6 @@ export function SitesCrud({
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [healthRefreshingSiteId, setHealthRefreshingSiteId] = useState<
-    number | null
-  >(null);
 
   const [search, setSearch] = useState("");
   const [ipFilterState, setIpFilterState] = useState("all");
@@ -230,6 +227,56 @@ export function SitesCrud({
     return (await response.json()) as T;
   }
 
+  async function refreshSitesData({
+    silent = false,
+  }: { silent?: boolean } = {}) {
+    if (!hasAccessToken) {
+      return;
+    }
+
+    try {
+      const sitesResponse = await request<SitesResponse>(
+        "/sites?uptime_days=90&page_size=100",
+        {
+          method: "GET",
+        },
+      );
+
+      setSites(
+        sortSites(
+          Array.isArray(sitesResponse.sites) ? sitesResponse.sites : [],
+        ),
+      );
+    } catch (refreshError) {
+      if (!silent) {
+        setError(
+          refreshError instanceof Error
+            ? refreshError.message
+            : "Unable to refresh sites.",
+        );
+        return;
+      }
+
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to refresh sites.",
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (!hasAccessToken) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshSitesData({ silent: true });
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [hasAccessToken]);
+
   async function handleCreateSite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -270,6 +317,7 @@ export function SitesCrud({
       setIpFilterMode("whitelist");
       setIpFiltersInput("");
       setIsCreateDialogOpen(false);
+      void refreshSitesData({ silent: true });
     } catch (submitError) {
       setFormError(
         submitError instanceof Error
@@ -344,6 +392,7 @@ export function SitesCrud({
         ),
       );
       closeFormDialog();
+      void refreshSitesData({ silent: true });
     } catch (submitError) {
       setFormError(
         submitError instanceof Error
@@ -380,6 +429,7 @@ export function SitesCrud({
       }
 
       setSitePendingDelete(null);
+      void refreshSitesData({ silent: true });
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
@@ -388,44 +438,6 @@ export function SitesCrud({
       );
     } finally {
       setIsDeleting(false);
-    }
-  }
-
-  async function handleRunHealthCheck(site: Site) {
-    if (!site.site_id) {
-      return;
-    }
-
-    setHealthRefreshingSiteId(site.id);
-    setError(null);
-    try {
-      const response = await request<{ health?: SiteHealth }>(
-        `/sites/${site.site_id}/health-check`,
-        {
-          method: "POST",
-        },
-      );
-
-      if (response.health) {
-        setSites((current) =>
-          current.map((item) =>
-            item.id === site.id
-              ? {
-                  ...item,
-                  health: response.health,
-                }
-              : item,
-          ),
-        );
-      }
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Unable to refresh site health.",
-      );
-    } finally {
-      setHealthRefreshingSiteId(null);
     }
   }
 
@@ -467,8 +479,7 @@ export function SitesCrud({
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sites</h1>
         <p className="text-sm text-muted-foreground">
-          Create, update, and remove connected sites. Site IDs are assigned
-          automatically.
+          Create, update, and remove connected sites.
         </p>
       </div>
 
@@ -700,18 +711,6 @@ export function SitesCrud({
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={
-                            healthRefreshingSiteId === site.id || !site.site_id
-                          }
-                          onClick={() => handleRunHealthCheck(site)}
-                        >
-                          {healthRefreshingSiteId === site.id
-                            ? "Checking..."
-                            : "Check health"}
-                        </Button>
                         <Button
                           type="button"
                           variant="outline"
