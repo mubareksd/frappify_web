@@ -1,12 +1,12 @@
 # Frappify Web
 
-The public-facing Next.js website for Frappify — handles marketing pages, unauthenticated routes, and the entry point for users before they sign in to the [app](../app/README.md).
+The public-facing Next.js website for Frappify — handles marketing pages, unauthenticated routes, and the entry point for users before they sign in to the [app](https://github.com/mubareksd/frappify_app/blob/main/README.md).
 
 ## Requirements
 
 - Node.js 20+
 - pnpm
-- A running instance of the [Frappify API](../api/README.md)
+- A running instance of the [Frappify API](https://github.com/mubareksd/frappify_api/blob/main/README.md)
 
 ## Setup
 
