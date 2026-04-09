@@ -13,7 +13,7 @@ export default async function SitesPage() {
     initialError = "You need an active session to manage sites.";
   } else {
     try {
-      const response = await fetch(`${env.API_URL}/sites`, {
+      const response = await fetch(`${env.API_URL}/sites?uptime_days=90`, {
         method: "GET",
         cache: "no-store",
         headers: {
@@ -33,9 +33,16 @@ export default async function SitesPage() {
       const data = (await response.json()) as { sites?: Site[] };
       sites = Array.isArray(data.sites) ? data.sites : [];
     } catch (error) {
-      initialError = error instanceof Error ? error.message : "Unable to load sites.";
+      initialError =
+        error instanceof Error ? error.message : "Unable to load sites.";
     }
   }
 
-  return <SitesCrud initialSites={sites} accessToken={accessToken} initialError={initialError} />;
+  return (
+    <SitesCrud
+      initialSites={sites}
+      accessToken={accessToken}
+      initialError={initialError}
+    />
+  );
 }

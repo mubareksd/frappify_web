@@ -49,6 +49,18 @@ import {
 } from "@/components/ui/table";
 import { env } from "@/lib/env";
 
+type SiteHealth = {
+  window_days: number;
+  checks: number;
+  up_checks: number;
+  uptime_percentage: number | null;
+  current_status: "up" | "down" | "unknown";
+  last_checked_at: string | null;
+  last_status_code: number | null;
+  last_response_time_ms: number | null;
+  last_error: string | null;
+};
+
 export type Site = {
   id: number;
   site_id?: string;
@@ -59,6 +71,7 @@ export type Site = {
   ip_filters?: string[];
   created_at?: string;
   updated_at?: string;
+  health?: SiteHealth;
 };
 
 type SiteResponse = {
@@ -97,7 +110,11 @@ function sortSites(nextSites: Site[]) {
   return [...nextSites].sort((left, right) => left.id - right.id);
 }
 
-export function SitesCrud({ initialSites, accessToken, initialError = null }: SitesCrudProps) {
+export function SitesCrud({
+  initialSites,
+  accessToken,
+  initialError = null,
+}: SitesCrudProps) {
   const [sites, setSites] = useState(() => sortSites(initialSites));
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
@@ -115,6 +132,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [healthRefreshingSiteId, setHealthRefreshingSiteId] = useState<
+    number | null
+  >(null);
 
   const [search, setSearch] = useState("");
   const [ipFilterState, setIpFilterState] = useState("all");
@@ -123,7 +143,10 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const hasAccessToken = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+  const hasAccessToken = useMemo(
+    () => accessToken.trim().length > 0,
+    [accessToken],
+  );
 
   const filteredAndSortedSites = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -139,27 +162,30 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
         return true;
       }
 
-      const haystack = `${site.site_id ?? ""} ${site.base_url ?? ""}`.toLowerCase();
+      const haystack =
+        `${site.site_id ?? ""} ${site.base_url ?? ""}`.toLowerCase();
       return haystack.includes(normalizedSearch);
     });
 
     const sorted = [...filtered].sort((left, right) => {
       const leftValue =
         sortBy === "site_id"
-          ? left.site_id ?? ""
+          ? (left.site_id ?? "")
           : sortBy === "base_url"
-            ? left.base_url ?? ""
+            ? (left.base_url ?? "")
             : left.id;
 
       const rightValue =
         sortBy === "site_id"
-          ? right.site_id ?? ""
+          ? (right.site_id ?? "")
           : sortBy === "base_url"
-            ? right.base_url ?? ""
+            ? (right.base_url ?? "")
             : right.id;
 
       if (typeof leftValue === "number" && typeof rightValue === "number") {
-        return sortDir === "asc" ? leftValue - rightValue : rightValue - leftValue;
+        return sortDir === "asc"
+          ? leftValue - rightValue
+          : rightValue - leftValue;
       }
 
       const comparison = String(leftValue).localeCompare(String(rightValue));
@@ -169,7 +195,10 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
     return sorted;
   }, [sites, search, ipFilterState, sortBy, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedSites.length / pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAndSortedSites.length / pageSize),
+  );
   const pagedSites = useMemo(() => {
     const start = (page - 1) * pageSize;
     return filteredAndSortedSites.slice(start, start + pageSize);
@@ -193,7 +222,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw new Error(body || `Request failed with ${response.status} ${response.statusText}`);
+      throw new Error(
+        body || `Request failed with ${response.status} ${response.statusText}`,
+      );
     }
 
     return (await response.json()) as T;
@@ -241,7 +272,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
       setIsCreateDialogOpen(false);
     } catch (submitError) {
       setFormError(
-        submitError instanceof Error ? submitError.message : "Unable to create site.",
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to create site.",
       );
     } finally {
       setIsCreating(false);
@@ -290,25 +323,32 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const response = await request<SiteResponse>(`/sites/${editingSite.site_id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          base_url: editBaseUrl.trim(),
-          enable_ip_filter: editEnableIpFilter,
-          ip_filter_mode: editIpFilterMode,
-          ip_filters: editIpFilters,
-        }),
-      });
+      const response = await request<SiteResponse>(
+        `/sites/${editingSite.site_id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            base_url: editBaseUrl.trim(),
+            enable_ip_filter: editEnableIpFilter,
+            ip_filter_mode: editIpFilterMode,
+            ip_filters: editIpFilters,
+          }),
+        },
+      );
 
       setSites((current) =>
         sortSites(
-          current.map((site) => (site.id === response.site.id ? response.site : site)),
+          current.map((site) =>
+            site.id === response.site.id ? response.site : site,
+          ),
         ),
       );
       closeFormDialog();
     } catch (submitError) {
       setFormError(
-        submitError instanceof Error ? submitError.message : "Unable to update site.",
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to update site.",
       );
     } finally {
       setIsUpdating(false);
@@ -324,9 +364,12 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
     setError(null);
 
     try {
-      await request<{ message: string }>(`/sites/${sitePendingDelete.site_id}`, {
-        method: "DELETE",
-      });
+      await request<{ message: string }>(
+        `/sites/${sitePendingDelete.site_id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       setSites((current) =>
         current.filter((site) => site.site_id !== sitePendingDelete.site_id),
@@ -339,11 +382,84 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
       setSitePendingDelete(null);
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error ? deleteError.message : "Unable to delete site.",
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Unable to delete site.",
       );
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  async function handleRunHealthCheck(site: Site) {
+    if (!site.site_id) {
+      return;
+    }
+
+    setHealthRefreshingSiteId(site.id);
+    setError(null);
+    try {
+      const response = await request<{ health?: SiteHealth }>(
+        `/sites/${site.site_id}/health-check`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (response.health) {
+        setSites((current) =>
+          current.map((item) =>
+            item.id === site.id
+              ? {
+                  ...item,
+                  health: response.health,
+                }
+              : item,
+          ),
+        );
+      }
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to refresh site health.",
+      );
+    } finally {
+      setHealthRefreshingSiteId(null);
+    }
+  }
+
+  function formatUptime(site: Site) {
+    const value = site.health?.uptime_percentage;
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+    return `${value.toFixed(2)}%`;
+  }
+
+  function formatLastCheck(site: Site) {
+    const value = site.health?.last_checked_at;
+    if (!value) {
+      return "Never";
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "Never";
+    }
+
+    return parsed.toLocaleString();
+  }
+
+  function statusTone(site: Site) {
+    const status = site.health?.current_status ?? "unknown";
+    if (status === "up") {
+      return "text-green-600";
+    }
+    if (status === "down") {
+      return "text-destructive";
+    }
+    return "text-muted-foreground";
   }
 
   return (
@@ -351,7 +467,8 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sites</h1>
         <p className="text-sm text-muted-foreground">
-          Create, update, and remove connected sites. Site IDs are assigned automatically.
+          Create, update, and remove connected sites. Site IDs are assigned
+          automatically.
         </p>
       </div>
 
@@ -387,7 +504,8 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
           <DialogHeader>
             <DialogTitle>Add site</DialogTitle>
             <DialogDescription>
-              Enter the site base URL. The backend will generate the site ID for you.
+              Enter the site base URL. The backend will generate the site ID for
+              you.
             </DialogDescription>
           </DialogHeader>
 
@@ -419,7 +537,11 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="ip-filter-mode">Filter mode</Label>
-                  <Select value={ipFilterMode} onValueChange={setIpFilterMode} disabled={isCreating}>
+                  <Select
+                    value={ipFilterMode}
+                    onValueChange={setIpFilterMode}
+                    disabled={isCreating}
+                  >
                     <SelectTrigger id="ip-filter-mode">
                       <SelectValue />
                     </SelectTrigger>
@@ -430,7 +552,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ip-filters">IP patterns (comma-separated)</Label>
+                  <Label htmlFor="ip-filters">
+                    IP patterns (comma-separated)
+                  </Label>
                   <Input
                     id="ip-filters"
                     value={ipFiltersInput}
@@ -442,7 +566,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               </div>
             )}
 
-            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            {formError ? (
+              <p className="text-sm text-destructive">{formError}</p>
+            ) : null}
 
             <DialogFooter>
               <Button
@@ -472,7 +598,8 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
         <CardHeader>
           <CardTitle>Your sites</CardTitle>
           <CardDescription>
-            Manage the sites available to your current account.
+            Manage the sites available to your current account and review 90-day
+            uptime.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -546,6 +673,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                 <TableHead>ID</TableHead>
                 <TableHead>Site ID</TableHead>
                 <TableHead>Base URL</TableHead>
+                <TableHead>90D Uptime</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Check</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -555,9 +685,33 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                   <TableRow key={site.id}>
                     <TableCell>{site.id}</TableCell>
                     <TableCell>{site.site_id ?? "N/A"}</TableCell>
-                    <TableCell className="max-w-[28rem] truncate">{site.base_url ?? "N/A"}</TableCell>
+                    <TableCell className="max-w-md truncate">
+                      {site.base_url ?? "N/A"}
+                    </TableCell>
+                    <TableCell>{formatUptime(site)}</TableCell>
+                    <TableCell className={statusTone(site)}>
+                      {(site.health?.current_status ?? "unknown").toUpperCase()}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-56 truncate"
+                      title={formatLastCheck(site)}
+                    >
+                      {formatLastCheck(site)}
+                    </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={
+                            healthRefreshingSiteId === site.id || !site.site_id
+                          }
+                          onClick={() => handleRunHealthCheck(site)}
+                        >
+                          {healthRefreshingSiteId === site.id
+                            ? "Checking..."
+                            : "Check health"}
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
@@ -578,7 +732,10 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="py-8 text-center text-muted-foreground"
+                  >
                     No sites found.
                   </TableCell>
                 </TableRow>
@@ -598,7 +755,7 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-[110px]">
+                <SelectTrigger className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -618,7 +775,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                onClick={() =>
+                  setPage((current) => Math.min(totalPages, current + 1))
+                }
                 disabled={page >= totalPages}
               >
                 Next
@@ -628,19 +787,28 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
         </CardContent>
       </Card>
 
-      <Dialog open={Boolean(editingSite)} onOpenChange={(open) => !open && closeFormDialog()}>
+      <Dialog
+        open={Boolean(editingSite)}
+        onOpenChange={(open) => !open && closeFormDialog()}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit site</DialogTitle>
             <DialogDescription>
-              Update the base URL for {editingSite?.site_id ?? "this site"}. Site IDs are read-only.
+              Update the base URL for {editingSite?.site_id ?? "this site"}.
+              Site IDs are read-only.
             </DialogDescription>
           </DialogHeader>
 
           <form className="space-y-4" onSubmit={handleUpdateSite}>
             <div className="space-y-2">
               <Label htmlFor="edit-site-id">Site ID</Label>
-              <Input id="edit-site-id" value={editingSite?.site_id ?? ""} disabled readOnly />
+              <Input
+                id="edit-site-id"
+                value={editingSite?.site_id ?? ""}
+                disabled
+                readOnly
+              />
             </div>
 
             <div className="space-y-2">
@@ -670,7 +838,11 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="edit-ip-filter-mode">Filter mode</Label>
-                  <Select value={editIpFilterMode} onValueChange={setEditIpFilterMode} disabled={isUpdating}>
+                  <Select
+                    value={editIpFilterMode}
+                    onValueChange={setEditIpFilterMode}
+                    disabled={isUpdating}
+                  >
                     <SelectTrigger id="edit-ip-filter-mode">
                       <SelectValue />
                     </SelectTrigger>
@@ -681,11 +853,15 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-ip-filters">IP patterns (comma-separated)</Label>
+                  <Label htmlFor="edit-ip-filters">
+                    IP patterns (comma-separated)
+                  </Label>
                   <Input
                     id="edit-ip-filters"
                     value={editIpFiltersInput}
-                    onChange={(event) => setEditIpFiltersInput(event.target.value)}
+                    onChange={(event) =>
+                      setEditIpFiltersInput(event.target.value)
+                    }
                     placeholder="192.168.*.*, 10.0.*.*"
                     disabled={isUpdating}
                   />
@@ -693,7 +869,9 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
               </div>
             )}
 
-            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            {formError ? (
+              <p className="text-sm text-destructive">{formError}</p>
+            ) : null}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeFormDialog}>
@@ -709,13 +887,16 @@ export function SitesCrud({ initialSites, accessToken, initialError = null }: Si
 
       <AlertDialog
         open={Boolean(sitePendingDelete)}
-        onOpenChange={(open) => !open && !isDeleting && setSitePendingDelete(null)}
+        onOpenChange={(open) =>
+          !open && !isDeleting && setSitePendingDelete(null)
+        }
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete site?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove {sitePendingDelete?.site_id ?? "this site"}.
+              This will permanently remove{" "}
+              {sitePendingDelete?.site_id ?? "this site"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
