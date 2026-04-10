@@ -1,7 +1,7 @@
 import { getCurrentSession } from "@/lib/session";
 import { env } from "@/lib/env";
-import { SiteLogs } from "../sites/logs";
-import LogsSitesList from "./sites";
+import { SiteLogs } from "../../../../components/dashboard/site_logs";
+import LogsSitesList from "../../../../components/dashboard/logs_sites_list";
 
 export default async function LogsPage({ searchParams }: { searchParams?: { site?: string } }) {
   const session = await getCurrentSession();

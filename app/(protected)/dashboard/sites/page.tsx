@@ -1,4 +1,7 @@
-import { SitesCrud, type Site } from "@/components/dashboard/sites-crud";
+import {
+  SitesPageClient,
+  type Site,
+} from "@/components/dashboard/sites_page_client";
 import { env } from "@/lib/env";
 import { getCurrentSession } from "@/lib/session";
 
@@ -44,7 +47,7 @@ export default async function SitesPage() {
   }
 
   return (
-    <SitesCrud
+    <SitesPageClient
       initialSites={sites}
       accessToken={accessToken}
       initialError={initialError}

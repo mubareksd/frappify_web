@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Site } from "./sites-crud";
+import { type Site } from "./sites_page_client";
 
 export function SitesList({ sites }: { sites: Site[] }) {
   const [search, setSearch] = useState("");
@@ -27,19 +27,25 @@ export function SitesList({ sites }: { sites: Site[] }) {
       if (!normalizedSearch) {
         return true;
       }
-      const haystack = `${site.site_id ?? ""} ${site.base_url ?? ""}`.toLowerCase();
+      const haystack =
+        `${site.site_id ?? ""} ${site.base_url ?? ""}`.toLowerCase();
       return haystack.includes(normalizedSearch);
     });
 
     return [...filtered].sort((left, right) => {
-      const leftValue = sortBy === "base_url" ? left.base_url ?? "" : left.site_id ?? "";
-      const rightValue = sortBy === "base_url" ? right.base_url ?? "" : right.site_id ?? "";
+      const leftValue =
+        sortBy === "base_url" ? (left.base_url ?? "") : (left.site_id ?? "");
+      const rightValue =
+        sortBy === "base_url" ? (right.base_url ?? "") : (right.site_id ?? "");
       const comparison = leftValue.localeCompare(rightValue);
       return sortDir === "asc" ? comparison : -comparison;
     });
   }, [sites, search, sortBy, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAndSorted.length / pageSize),
+  );
   const pagedSites = useMemo(() => {
     const start = (page - 1) * pageSize;
     return filteredAndSorted.slice(start, start + pageSize);
@@ -149,7 +155,9 @@ export function SitesList({ sites }: { sites: Site[] }) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
               disabled={page >= totalPages}
             >
               Next

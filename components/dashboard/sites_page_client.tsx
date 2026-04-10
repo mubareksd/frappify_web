@@ -82,7 +82,7 @@ type SitesResponse = {
   sites?: Site[];
 };
 
-type SitesCrudProps = {
+type SitesPageClientProps = {
   initialSites: Site[];
   accessToken: string;
   initialError?: string | null;
@@ -110,11 +110,11 @@ function sortSites(nextSites: Site[]) {
   return [...nextSites].sort((left, right) => left.id - right.id);
 }
 
-export function SitesCrud({
+export function SitesPageClient({
   initialSites,
   accessToken,
   initialError = null,
-}: SitesCrudProps) {
+}: SitesPageClientProps) {
   const [sites, setSites] = useState(() => sortSites(initialSites));
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");

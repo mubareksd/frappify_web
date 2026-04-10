@@ -1,7 +1,7 @@
 import { getCurrentSession } from "@/lib/session";
 import { env } from "@/lib/env";
 import { SitesList } from "@/components/dashboard/sites-list";
-import { Site } from "@/components/dashboard/sites-crud";
+import { Site } from "@/components/dashboard/sites_page_client";
 
 export default async function LogsSitesList() {
   const session = await getCurrentSession();
