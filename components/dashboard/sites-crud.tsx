@@ -651,7 +651,6 @@ export function SitesCrud({
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="id">ID</SelectItem>
                 <SelectItem value="site_id">Site ID</SelectItem>
                 <SelectItem value="base_url">Base URL</SelectItem>
               </SelectContent>
@@ -681,7 +680,7 @@ export function SitesCrud({
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead>#</TableHead>
                 <TableHead>Site ID</TableHead>
                 <TableHead>Base URL</TableHead>
                 <TableHead>90D Uptime</TableHead>
@@ -692,9 +691,9 @@ export function SitesCrud({
             </TableHeader>
             <TableBody>
               {pagedSites.length ? (
-                pagedSites.map((site) => (
+                pagedSites.map((site, idx) => (
                   <TableRow key={site.id}>
-                    <TableCell>{site.id}</TableCell>
+                    <TableCell>{(page - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell>{site.site_id ?? "N/A"}</TableCell>
                     <TableCell className="max-w-md truncate">
                       {site.base_url ?? "N/A"}
